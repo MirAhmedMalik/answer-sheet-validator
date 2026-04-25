@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<!--
+  app/templates/index.html — Premium Teacher Upload UI for AI Answer Validator
+  Upgraded to a high-end, modern "glassmorphism" aesthetic with neon accents.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Premium AI Answer Validator</title>
+  <style>
+    /* ── High-End Design System ──────────────────────────────────────────── */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;900&display=swap');
+
+    :root {
+      --bg-dark: #09090b;
+      --card-bg: rgba(24, 24, 27, 0.65);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #8b5cf6;
+      --primary-glow: rgba(139, 92, 246, 0.5);
+      --secondary: #d946ef;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.2);
+      --error: #ef4444;
+      --radius: 16px;
+      --font-ui: 'Inter', sans-serif;
+      --font-display: 'Outfit', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.15), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(217, 70, 239, 0.12), transparent 25%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem 5rem;
+      overflow-x: hidden;
+    }
+
+    /* ── Animations ──────────────────────────────────────────────────────── */
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+      100% { transform: translateY(0px); }
+    }
+    
+    @keyframes fadeIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: float 6s ease-in-out infinite;
+    }
+
+    header h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, #a78bfa, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+      filter: drop-shadow(0 4px 12px rgba(167, 139, 250, 0.4));
+    }
+
+    header p {
+      color: var(--text-muted);
+      margin-top: 0.75rem;
+      font-size: 1.05rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Glass Card ──────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 700px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      position: relative;
+      z-index: 10;
+    }
+
+    /* ── Form Fields ─────────────────────────────────────────────────────── */
+    .field { margin-bottom: 1.75rem; }
+
+    label {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.6rem;
+    }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 1rem;
+      font-size: 1rem;
+      color: #fff;
+      font-family: var(--font-ui);
+      resize: vertical;
+      transition: all 0.3s ease;
+    }
+
+    textarea:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(0, 0, 0, 0.4);
+      box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+    }
+    
+    textarea::placeholder { color: rgba(255, 255, 255, 0.3); }
+
+    .char-count {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 0.4rem;
+      font-weight: 500;
+    }
+
+    /* ── Premium Drop Zone ───────────────────────────────────────────────── */
+    .drop-zone {
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%);
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--secondary);
+      background: rgba(217, 70, 239, 0.05);
+      transform: translateY(-2px);
+    }
+
+    .drop-zone svg { 
+      filter: drop-shadow(0 2px 8px rgba(255,255,255,0.2)); 
+      margin-bottom: 1rem; 
+      color: #fff;
+    }
+    
+    .drop-zone p { color: #fff; font-size: 1.05rem; font-weight: 500; }
+    .drop-zone span { 
+      color: var(--secondary); 
+      font-weight: 700; 
+      text-decoration: underline; 
+      text-underline-offset: 4px;
+    }
+
+    #file-input { display: none; }
+    #preview-wrap { margin-top: 1rem; display: none; text-align: center; }
+    #preview-wrap img {
+      max-height: 250px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    /* ── Submit Button ───────────────────────────────────────────────────── */
+    .btn-submit {
+      width: 100%;
+      padding: 1.1rem;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      box-shadow: 0 4px 15px var(--primary-glow);
+    }
+
+    .btn-submit:hover:not(:disabled) { 
+      transform: translateY(-2px); 
+      box-shadow: 0 8px 25px var(--primary-glow);
+      filter: brightness(1.1);
+    }
+    .btn-submit:active:not(:disabled) { transform: translateY(1px); }
+    .btn-submit:disabled { background: #334155; box-shadow: none; cursor: not-allowed; opacity: 0.7; }
+
+    /* ── Dynamic Result Card ─────────────────────────────────────────────── */
+    #result-card {
+      display: none;
+      margin-top: 2rem;
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, rgba(0,0,0,0.4) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: var(--radius);
+      padding: 2rem;
+      opacity: 0;
+      transform: translateY(20px);
+      box-shadow: 0 0 30px var(--success-glow);
+    }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .score-circle {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: conic-gradient(from 180deg at 50% 50%, var(--success), #34d399);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .score-circle .num  { font-family: var(--font-display); font-size: 2.2rem; font-weight: 900; line-height: 1; }
+    .score-circle .denom { font-size: 0.8rem; font-weight: 600; opacity: 0.9; }
+
+    .score-label { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; color: #fff; }
+    .score-sublabel { font-size: 0.9rem; color: var(--success); font-weight: 500; }
+
+    .result-section h3 {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .result-section p {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: #e2e8f0;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    #error-banner {
+      display: none;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--error);
+      border-radius: 10px;
+      color: #fca5a5;
+      padding: 1rem;
+      margin-top: 1.5rem;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .card { padding: 1.5rem; }
+      .drop-zone { padding: 2rem 1rem; }
+      .score-circle { width: 70px; height: 70px; }
+      .score-circle .num { font-size: 1.7rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>GradeOS Pro</h1>
+    <p>AI-Powered Precision Assessment Engine</p>
+  </header>
+
+  <div class="card">
+    <form id="grade-form" novalidate>
+
+      <div class="field">
+        <label>Student Submission Target</label>
+        <div class="drop-zone" id="drop-zone">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"/>
+          </svg>
+          <p>Drag image here or <span id="browse-link">Upload from Device</span></p>
+          <p style="font-size:0.8rem;margin-top:0.5rem;color:#64748b;">Accepts pristine JPG/PNG files</p>
+        </div>
+        <input type="file" id="file-input" name="file" accept=".jpg,.jpeg,.png" />
+        <div id="preview-wrap">
+          <img id="preview" />
+          <div id="file-name" style="color:#94a3b8;font-size:0.85rem;margin-top:0.5rem;"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Assessment Question</label>
+        <textarea id="question" name="question" rows="3" maxlength="500" placeholder="State the question asked in the exam..."></textarea>
+        <div class="char-count"><span id="q-count">0</span> / 500</div>
+      </div>
+
+      <div class="field">
+        <label>Rubric Benchmark (Correct Answer)</label>
+        <textarea id="correct_answer" name="correct_answer" rows="4" maxlength="2000" placeholder="Provide the absolute correct factual answer to establish the grading benchmark..."></textarea>
+        <div class="char-count"><span id="a-count">0</span> / 2000</div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submit-btn">Initialize Evaluation Sequence</button>
+      <div id="error-banner"></div>
+    </form>
+
+    <div id="result-card">
+      <div class="score-row">
+        <div class="score-circle">
+          <span class="num" id="score-num">—</span>
+          <span class="denom">/10</span>
+        </div>
+        <div>
+          <div class="score-label" id="score-label">Assessment Complete</div>
+          <div class="score-sublabel">Accuracy verification passed</div>
+        </div>
+      </div>
+
+      <div class="result-section">
+        <h3>Extracted OCR Content</h3>
+        <p id="extracted-text"></p>
+      </div>
+
+      <div class="result-section">
+        <h3>AI Analysis & Evaluation</h3>
+        <p id="feedback-text"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    const form = document.getElementById("grade-form");
+    const fileInput = document.getElementById("file-input");
+    const dropZone = document.getElementById("drop-zone");
+    const previewImg = document.getElementById("preview");
+    const submitBtn = document.getElementById("submit-btn");
+    const resultCard = document.getElementById("result-card");
+
+    // Counters
+    document.getElementById("question").addEventListener("input", e => document.getElementById("q-count").textContent = e.target.value.length);
+    document.getElementById("correct_answer").addEventListener("input", e => document.getElementById("a-count").textContent = e.target.value.length);
+
+    // Dropzone Logic
+    document.getElementById("browse-link").addEventListener("click", () => fileInput.click());
+    dropZone.addEventListener("click", () => fileInput.click());
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", e => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; showPreview(fileInput.files[0]); }
+    });
+    fileInput.addEventListener("change", () => { if (fileInput.files.length) showPreview(fileInput.files[0]); });
+
+    function showPreview(file) {
+      const rd = new FileReader();
+      rd.onload = ev => {
+        previewImg.src = ev.target.result;
+        document.getElementById("file-name").textContent = file.name;
+        document.getElementById("preview-wrap").style.display = "block";
+      };
+      rd.readAsDataURL(file);
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errBin = document.getElementById("error-banner");
+      errBin.style.display = "none";
+      resultCard.style.display = "none";
+      resultCard.style.animation = "none";
+
+      if (!fileInput.files.length || !document.getElementById("question").value || !document.getElementById("correct_answer").value) {
+        errBin.textContent = "All fields and image are strictly required to proceed.";
+        errBin.style.display = "block";
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Processing Optical Data & Grading...";
+
+      try {
+        const res = await fetch("/grade", { method: "POST", body: new FormData(form) });
+        const data = await res.json();
+        
+        if (!res.ok || data.error) throw new Error(data.error || "Server processing failure.");
+
+        document.getElementById("score-num").textContent = data.score;
+        document.getElementById("extracted-text").textContent = data.extracted_text;
+        document.getElementById("feedback-text").textContent = data.feedback;
+        
+        resultCard.style.display = "block";
+        resultCard.style.animation = "fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards";
+        resultCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+      } catch (err) {
+        errBin.textContent = err.message;
+        errBin.style.display = "block";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Initialize Evaluation Sequence";
+      }
+    });
+  </script>
+</body>
+</html>

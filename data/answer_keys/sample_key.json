@@ -1,0 +1,12 @@
+{
+  "_comment": "sample_key.json — Example answer key for testing the grading pipeline.",
+  "subject": "General Knowledge",
+  "total_marks": 10,
+  "questions": [
+    { "q": 1, "answer": "Paris",       "marks": 2 },
+    { "q": 2, "answer": "H2O",         "marks": 2 },
+    { "q": 3, "answer": "Albert Einstein", "marks": 2 },
+    { "q": 4, "answer": "1969",        "marks": 2 },
+    { "q": 5, "answer": "Photosynthesis", "marks": 2 }
+  ]
+}

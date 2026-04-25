@@ -1,0 +1,28 @@
+# =============================================================================
+# requirements.txt — Pinned production dependencies for reproducible builds.
+# All versions are locked to ensure consistent behaviour across environments.
+# =============================================================================
+
+# Web framework
+flask==3.0.3
+werkzeug==3.0.4
+
+# Environment variable management
+python-dotenv==1.0.1
+
+# OCR
+pytesseract==0.3.13
+Pillow==10.4.0
+
+# AI grading — Groq API (works globally, free tier available)
+groq>=1.2.0
+
+# MLOps — experiment tracking
+mlflow==2.15.1
+
+# MLOps — data version control
+dvc==3.51.2
+
+# Testing
+pytest==8.3.2
+pytest-cov==5.0.0

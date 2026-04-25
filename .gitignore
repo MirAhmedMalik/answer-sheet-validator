@@ -1,0 +1,55 @@
+# =============================================================================
+# .gitignore — Specifies intentionally untracked files for Git to ignore.
+# Covers Python, virtual environments, sensitive config, uploads, and MLOps
+# tooling artifacts for the AI-Powered Answer Sheet Validator project.
+# =============================================================================
+
+# ── Sensitive / Environment ──────────────────────────────────────────────────
+.env
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# ── Virtual Environments ─────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env/
+
+# ── Testing & Coverage ───────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Uploads (user-submitted images — never commit student data) ──────────────
+uploads/*.jpg
+uploads/*.jpeg
+uploads/*.png
+uploads/*.gif
+uploads/*.bmp
+
+# ── MLflow ───────────────────────────────────────────────────────────────────
+mlruns/
+mlartifacts/
+
+# ── DVC ──────────────────────────────────────────────────────────────────────
+.dvc/tmp
+.dvc/cache
+
+# ── IDE / OS ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+*.log
+*.tmp

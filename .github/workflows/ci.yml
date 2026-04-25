@@ -1,0 +1,60 @@
+# =============================================================================
+# .github/workflows/ci.yml — GitHub Actions CI/CD pipeline.
+# Runs on every push/PR: installs dependencies, lints, and executes tests
+# with coverage. Tesseract is installed as a system dependency for OCR tests.
+# =============================================================================
+
+name: CI — Answer Sheet Validator
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Install · Lint · Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────── #
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Python setup ────────────────────────────────────────────────────── #
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # ── System dependency — Tesseract OCR ───────────────────────────────── #
+      - name: Install Tesseract OCR
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y tesseract-ocr
+
+      # ── Python dependencies ─────────────────────────────────────────────── #
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # ── Tests with coverage ─────────────────────────────────────────────── #
+      - name: Run pytest with coverage
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          pytest tests/ \
+            --cov=model \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-fail-under=70 \
+            -v
+
+      # ── Upload coverage report as artifact ──────────────────────────────── #
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: .coverage
