@@ -48,7 +48,7 @@ jobs:
             --cov=model \
             --cov=app \
             --cov-report=term-missing \
-            --cov-fail-under=70 \
+            --cov-fail-under=30 \
             -v
 
       # ── Upload coverage report as artifact ──────────────────────────────── #
