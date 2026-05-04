@@ -5,6 +5,7 @@
 # SECURITY: OWASP-aware — no hardcoded keys, validated extensions, no PII logs.
 # =============================================================================
 
+import sys as _sys
 import json
 import logging
 import os
@@ -16,28 +17,29 @@ from dotenv import load_dotenv
 from groq import Groq
 from PIL import Image
 
-# ── Load .env ─────────────────────────────────────────────────────────────────
+# ── Load .env ───────────────────────────────────────────────────────────
 load_dotenv()
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# ── Constants ───────────────────────────────────────────────────────────
 ALLOWED_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png"}
-MODEL_NAME: str               = "llama-3.1-8b-instant"
-MLFLOW_EXPERIMENT: str        = "answer-sheet-validation"
+MODEL_NAME: str = "llama-3.1-8b-instant"
+MLFLOW_EXPERIMENT: str = "answer-sheet-validation"
 
 # ── Ensure Tesseract is in PATH (Windows only — Linux/Docker uses system PATH) ─
-import sys as _sys
 if _sys.platform == "win32":
     _TESSERACT_DIR = r"C:\Program Files\Tesseract-OCR"
     if _TESSERACT_DIR not in os.environ.get("PATH", ""):
-        os.environ["PATH"] = _TESSERACT_DIR + os.pathsep + os.environ.get("PATH", "")
+        os.environ["PATH"] = _TESSERACT_DIR + \
+            os.pathsep + os.environ.get("PATH", "")
 pytesseract.pytesseract.tesseract_cmd = "tesseract"
 
-# ── Logger ────────────────────────────────────────────────────────────────────
+# ── Logger ──────────────────────────────────────────────────────────────
 logger = logging.getLogger(__name__)
 
-# ── Groq client (key from env — never hardcoded) ──────────────────────────────
+# ── Groq client (key from env — never hardcoded) ────────────────────────
 _GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
-_groq_client: Groq | None = Groq(api_key=_GROQ_API_KEY) if _GROQ_API_KEY else None
+_groq_client: Groq | None = Groq(
+    api_key=_GROQ_API_KEY) if _GROQ_API_KEY else None
 
 
 # =============================================================================
@@ -223,7 +225,8 @@ def grade_answer(
             student_text = extract_text(image_path)
         except Exception as exc:
             logger.error("OCR failed: %s", exc)
-            return {"error": f"OCR failed: {exc}", "extracted_text": "", "score": 0, "feedback": ""}
+            return {"error": f"OCR failed: {exc}",
+                    "extracted_text": "", "score": 0, "feedback": ""}
 
         if not student_text:
             return {
@@ -235,9 +238,9 @@ def grade_answer(
 
     # Step 3 — Groq grading
     try:
-        prompt        = build_prompt(question, correct_answer, student_text)
-        groq_result   = call_groq(prompt)
-        score: int    = int(groq_result["score"])
+        prompt = build_prompt(question, correct_answer, student_text)
+        groq_result = call_groq(prompt)
+        score: int = int(groq_result["score"])
         feedback: str = str(groq_result["feedback"])
     except Exception as exc:
         logger.error("Groq grading failed: %s", exc)

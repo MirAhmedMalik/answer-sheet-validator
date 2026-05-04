@@ -43,10 +43,10 @@ def _make_groq_mock(response_text: str) -> MagicMock:
     mock_choice.message = mock_message
     mock_completion = MagicMock()
     mock_completion.choices = [mock_choice]
-    
+
     mock_chat = MagicMock()
     mock_chat.completions.create.return_value = mock_completion
-    
+
     mock_client = MagicMock()
     mock_client.chat = mock_chat
     return mock_client
@@ -94,7 +94,8 @@ class TestValidateImagePath:
 class TestExtractText:
     """Tests for the extract_text function."""
 
-    @patch("model.grader.pytesseract.image_to_string", return_value=f"  {MOCK_OCR_TEXT}  ")
+    @patch("model.grader.pytesseract.image_to_string",
+           return_value=f"  {MOCK_OCR_TEXT}  ")
     @patch("model.grader.Image.open", return_value=_mock_pil_image())
     def test_returns_stripped_text(self, mock_open, mock_ocr):
         """OCR output must be stripped of leading/trailing whitespace."""
@@ -142,8 +143,10 @@ class TestGradeAnswer:
     """Integration-level tests for the public grade_answer function."""
 
     @patch("model.grader.log_to_mlflow")
-    @patch("model.grader._groq_client", new_callable=lambda: _make_groq_mock(MOCK_GROQ_JSON))
-    @patch("model.grader.pytesseract.image_to_string", return_value=MOCK_OCR_TEXT)
+    @patch("model.grader._groq_client",
+           new_callable=lambda: _make_groq_mock(MOCK_GROQ_JSON))
+    @patch("model.grader.pytesseract.image_to_string",
+           return_value=MOCK_OCR_TEXT)
     @patch("model.grader.Image.open", return_value=_mock_pil_image())
     def test_grade_answer_returns_required_keys(
         self, mock_open, mock_ocr, mock_client, mock_log, tmp_path
@@ -165,8 +168,10 @@ class TestGradeAnswer:
         assert "feedback" in result, "Missing key: feedback"
 
     @patch("model.grader.log_to_mlflow")
-    @patch("model.grader._groq_client", new_callable=lambda: _make_groq_mock(MOCK_GROQ_JSON))
-    @patch("model.grader.pytesseract.image_to_string", return_value=MOCK_OCR_TEXT)
+    @patch("model.grader._groq_client",
+           new_callable=lambda: _make_groq_mock(MOCK_GROQ_JSON))
+    @patch("model.grader.pytesseract.image_to_string",
+           return_value=MOCK_OCR_TEXT)
     @patch("model.grader.Image.open", return_value=_mock_pil_image())
     def test_score_is_within_range(
         self, mock_open, mock_ocr, mock_client, mock_log, tmp_path
@@ -196,7 +201,7 @@ class TestGradeAnswer:
         img.write_bytes(b"fake-image-data")
 
         with patch("model.grader.pytesseract.image_to_string", return_value=MOCK_OCR_TEXT), \
-             patch("model.grader.Image.open", return_value=_mock_pil_image()):
+                patch("model.grader.Image.open", return_value=_mock_pil_image()):
             result = grade_answer(
                 image_path=str(img),
                 question="Test question",
@@ -222,10 +227,12 @@ class TestGradeAnswer:
             grade_answer(image_path="/does/not/exist.jpg", question="Q")
 
     @patch("model.grader.log_to_mlflow")
-    @patch("model.grader._groq_client", new_callable=lambda: _make_groq_mock(MOCK_GROQ_JSON))
+    @patch("model.grader._groq_client",
+           new_callable=lambda: _make_groq_mock(MOCK_GROQ_JSON))
     @patch("model.grader.Image.open", return_value=_mock_pil_image())
     @patch("model.grader.pytesseract.image_to_string", return_value="")
-    def test_empty_ocr_returns_error_dict(self, mock_ocr, mock_open, mock_client, mock_log, tmp_path):
+    def test_empty_ocr_returns_error_dict(
+            self, mock_ocr, mock_open, mock_client, mock_log, tmp_path):
         """If OCR returns empty text, grade_answer must return an error dict."""
         from model.grader import grade_answer
 
