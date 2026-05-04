@@ -70,6 +70,7 @@
       font-weight: 900;
       background: linear-gradient(135deg, #a78bfa, #f472b6);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
       letter-spacing: -0.02em;
       filter: drop-shadow(0 4px 12px rgba(167, 139, 250, 0.4));
@@ -370,7 +371,7 @@
         <div class="char-count"><span id="a-count">0</span> / 2000</div>
       </div>
 
-      <button type="submit" class="btn-submit" id="submit-btn">Initialize Evaluation Sequence</button>
+      <button type="submit" class="btn-submit" id="submit-btn">Grade Answer Sheet</button>
       <div id="error-banner"></div>
     </form>
 
@@ -497,7 +498,7 @@
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "Initializing Evaluation Sequence...";
+      submitBtn.textContent = "Grading...";
 
       try {
         const res = await fetch("/grade", { method: "POST", body: new FormData(form) });
@@ -518,7 +519,7 @@
         errBin.style.display = "block";
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = "Initialize Evaluation Sequence";
+        submitBtn.textContent = "Grade Answer Sheet";
       }
     });
   </script>

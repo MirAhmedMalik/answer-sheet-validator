@@ -1,15 +1,12 @@
-# =============================================================================
-# model/grader.py — AI Grading Engine (Groq / LLaMA 3 Edition)
-# Pipeline: validate → Tesseract OCR → Groq LLaMA3 grading → MLflow logging.
-# Gemini replaced with Groq API (groq Python library) to work in all regions.
-# SECURITY: OWASP-aware — no hardcoded keys, validated extensions, no PII logs.
-# =============================================================================
+# model/grader.py — AI grading engine.
+# Pipeline: image → Tesseract OCR → Groq LLaMA3 grading → MLflow logging.
+# No hardcoded credentials. Student text is never logged (privacy).
 
-import sys as _sys
 import json
 import logging
 import os
 import re
+import sys
 
 import mlflow
 import pytesseract
@@ -17,45 +14,37 @@ from dotenv import load_dotenv
 from groq import Groq
 from PIL import Image
 
-# ── Load .env ───────────────────────────────────────────────────────────
+# Load environment variables from .env (no-op in production where env is set directly)
 load_dotenv()
 
-# ── Constants ───────────────────────────────────────────────────────────
+# Model and experiment names — change here to switch models globally
 ALLOWED_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png"}
 MODEL_NAME: str = "llama-3.1-8b-instant"
 MLFLOW_EXPERIMENT: str = "answer-sheet-validation"
 
-# ── Ensure Tesseract is in PATH (Windows only — Linux/Docker uses system PATH) ─
-if _sys.platform == "win32":
+# On Windows, Tesseract is usually not on PATH automatically — add it if needed.
+# Linux and Docker find it via the system PATH, so this block is skipped there.
+if sys.platform == "win32":
     _TESSERACT_DIR = r"C:\Program Files\Tesseract-OCR"
     if _TESSERACT_DIR not in os.environ.get("PATH", ""):
-        os.environ["PATH"] = _TESSERACT_DIR + \
-            os.pathsep + os.environ.get("PATH", "")
+        os.environ["PATH"] = _TESSERACT_DIR + os.pathsep + os.environ.get("PATH", "")
 pytesseract.pytesseract.tesseract_cmd = "tesseract"
 
-# ── Logger ──────────────────────────────────────────────────────────────
 logger = logging.getLogger(__name__)
 
-# ── Groq client (key from env — never hardcoded) ────────────────────────
+# Build the Groq client once at import time. If the key is missing, the client
+# is None and call_groq() raises a clear RuntimeError instead of crashing here.
 _GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
-_groq_client: Groq | None = Groq(
-    api_key=_GROQ_API_KEY) if _GROQ_API_KEY else None
+_groq_client: Groq | None = Groq(api_key=_GROQ_API_KEY) if _GROQ_API_KEY else None
 
-
-# =============================================================================
-# Validation
-# =============================================================================
 
 def validate_image_path(image_path: str) -> None:
     """
-    Validate that the image file exists and has an allowed extension.
-
-    Args:
-        image_path: Path to the candidate image file.
+    Check that the file exists and has an allowed image extension.
 
     Raises:
-        FileNotFoundError: File does not exist at the given path.
-        ValueError:        File extension is not in ALLOWED_EXTENSIONS.
+        FileNotFoundError: File does not exist.
+        ValueError: Extension is not .jpg, .jpeg, or .png.
     """
     if not os.path.exists(image_path):
         raise FileNotFoundError(
@@ -70,78 +59,61 @@ def validate_image_path(image_path: str) -> None:
         )
 
 
-# =============================================================================
-# OCR
-# =============================================================================
-
 def extract_text(image_path: str) -> str:
-    """
-    Run Tesseract OCR on an image and return the extracted text.
-
-    Args:
-        image_path: Path to a valid image file.
-
-    Returns:
-        Stripped string of text found in the image.
-    """
+    """Run Tesseract OCR on an image and return the extracted text (stripped)."""
     with Image.open(image_path) as img:
         text: str = pytesseract.image_to_string(img)
     return text.strip()
 
 
-# =============================================================================
-# Prompt builder
-# =============================================================================
-
 def build_prompt(question: str, correct_answer: str, student_text: str) -> str:
     """
-    Build a structured grading prompt for the LLaMA3 model.
+    Build the structured grading prompt sent to LLaMA3.
 
-    Args:
-        question:       The exam question being assessed.
-        correct_answer: The expected model answer.
-        student_text:   OCR-extracted text from the student's sheet.
-
-    Returns:
-        A formatted prompt string instructing the model to return only JSON.
+    Returns a string that instructs the model to return only a JSON object
+    with 'score' (int, 0-10) and 'feedback' (str) keys.
     """
     return (
         "You are an expert, highly accurate academic grader.\n\n"
-        "First, analyze the QUESTION and RUBRIC below to automatically deduce the subject (e.g., Math, Physics, English, History). "
-        "Adapt your grading strictness to that subject (e.g., Math requires correct final numbers or steps, History/English focus on concepts and semantic meaning).\n\n"
+        "First, analyze the QUESTION and RUBRIC below to automatically deduce the subject "
+        "(e.g., Math, Physics, English, History). "
+        "Adapt your grading strictness to that subject (e.g., Math requires correct final "
+        "numbers or steps, History/English focus on concepts and semantic meaning).\n\n"
         f"QUESTION:\n{question}\n\n"
         f"TEACHER'S GRADING RUBRIC / CORRECT ANSWER:\n{correct_answer}\n\n"
         f"STUDENT'S WRITTEN ANSWER (extracted via OCR, may contain typos):\n{student_text}\n\n"
         "INSTRUCTIONS FOR EVALUATION:\n"
-        "1. Understand the student's core conceptual meaning. Ignore minor spelling mistakes or OCR artifacts (like random punctuation or misread letters).\n"
-        "2. SEMANTIC MATCHING: DO NOT penalize the student if they use different words or synonyms than the teacher. If the underlying logic, physics, math end-result, or conceptual meaning is the same as the rubric, award full points!\n"
+        "1. Understand the student's core conceptual meaning. Ignore minor spelling mistakes "
+        "or OCR artifacts (like random punctuation or misread letters).\n"
+        "2. SEMANTIC MATCHING: DO NOT penalize the student if they use different words or "
+        "synonyms than the teacher. If the underlying logic, physics, math end-result, or "
+        "conceptual meaning is the same as the rubric, award full points!\n"
         "3. GRADING & SCORING (Maximum 10 Points):\n"
-        "   - IF THE RUBRIC GIVES SPECIFIC POINTS: You MUST strictly add up the points exactly according to the teacher's point distribution (e.g., if they say '4 pts for X, 6 pts for Y', score strictly out of those rules).\n"
-        "   - IF NO POINT BREAKDOWN IS GIVEN: Use your own expert judgment to assign a fair score out of 10 based on how closely the student's meaning matches the teacher's expected answer (10 = perfectly accurate, 5 = partially correct, 0 = entirely wrong).\n"
-        "4. Write 2-3 sentences of clear feedback explaining exactly what they got right, and where they went wrong.\n\n"
+        "   - IF THE RUBRIC GIVES SPECIFIC POINTS: You MUST strictly add up the points exactly "
+        "according to the teacher's point distribution "
+        "(e.g., if they say '4 pts for X, 6 pts for Y', score strictly out of those rules).\n"
+        "   - IF NO POINT BREAKDOWN IS GIVEN: Use your own expert judgment to assign a fair "
+        "score out of 10 based on how closely the student's meaning matches the teacher's "
+        "expected answer (10 = perfectly accurate, 5 = partially correct, 0 = entirely wrong).\n"
+        "4. Write 2-3 sentences of clear feedback explaining exactly what they got right, "
+        "and where they went wrong.\n\n"
         "OUTPUT REQUIREMENTS:\n"
-        "Respond with ONLY valid JSON. Absolutely no markdown fences (like ```json), no intro text, no trailing text.\n"
+        "Respond with ONLY valid JSON. Absolutely no markdown fences (like ```json), "
+        "no intro text, no trailing text.\n"
         'Exactly like this: {"score": <integer>, "feedback": "<string>"}'
     )
 
 
-# =============================================================================
-# Groq API call
-# =============================================================================
-
 def call_groq(prompt: str) -> dict:
     """
-    Send the grading prompt to Groq (LLaMA3) and parse the JSON response.
-
-    Args:
-        prompt: Fully constructed grading prompt string.
+    Send the grading prompt to Groq (LLaMA3) and return the parsed JSON response.
 
     Returns:
-        Dict with keys ``score`` (int) and ``feedback`` (str).
+        Dict with 'score' (int) and 'feedback' (str).
 
     Raises:
-        RuntimeError: GROQ_API_KEY environment variable is not set.
-        ValueError:   Response cannot be parsed as valid JSON.
+        RuntimeError: GROQ_API_KEY is not set.
+        ValueError: Response contains no parseable JSON object.
     """
     if not _groq_client:
         raise RuntimeError(
@@ -161,37 +133,26 @@ def call_groq(prompt: str) -> dict:
             },
             {"role": "user", "content": prompt},
         ],
-        temperature=0.2,   # Low temp for consistent, deterministic grading
+        temperature=0.2,  # Low temperature keeps scores consistent across repeated runs
         max_tokens=512,
     )
 
     raw: str = chat_completion.choices[0].message.content or ""
 
-    # Extract JSON even if model wraps it in markdown fences
+    # The model occasionally wraps output in ```json fences — strip them with regex
     json_match = re.search(r"\{.*\}", raw, re.DOTALL)
     if not json_match:
-        raise ValueError(
-            f"Groq returned a response with no JSON object: {raw!r}"
-        )
+        raise ValueError(f"Groq returned a response with no JSON object: {raw!r}")
 
     return json.loads(json_match.group())
 
-
-# =============================================================================
-# MLflow logging
-# =============================================================================
 
 def log_to_mlflow(question_length: int, score: int) -> None:
     """
     Log one grading session to MLflow.
 
-    Params : question_length, model_name
-    Metrics: score
-    Note   : Raw student text intentionally excluded (student privacy).
-
-    Args:
-        question_length: Character count of the exam question.
-        score:           Integer score assigned by LLaMA3 (0-10).
+    We log question_length and model_name as params, and score as a metric.
+    Raw student text is intentionally excluded to protect student privacy.
     """
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
     with mlflow.start_run():
@@ -200,10 +161,6 @@ def log_to_mlflow(question_length: int, score: int) -> None:
         mlflow.log_metric("score", score)
 
 
-# =============================================================================
-# Public API
-# =============================================================================
-
 def grade_answer(
     image_path: str = "",
     question: str = "",
@@ -211,22 +168,25 @@ def grade_answer(
     student_text_input: str = "",
 ) -> dict:
     """
-    Full grading pipeline: validate → OCR → Groq grade → MLflow log → result.
-    If student_text_input is provided, bypasses image validation and OCR completely.
+    Run the full grading pipeline and return a result dict.
+
+    If student_text_input is provided, OCR is skipped entirely and that text
+    is graded directly. Otherwise the image at image_path is OCR'd first.
+
+    Returns a dict with keys: extracted_text, score, feedback.
+    On failure, returns a dict with an 'error' key instead.
     """
     if student_text_input:
         student_text = student_text_input
     else:
-        # Step 1 — Validate (raises on bad path / extension)
+        # Validate path and extension before touching any external service
         validate_image_path(image_path)
 
-        # Step 2 — OCR
         try:
             student_text = extract_text(image_path)
         except Exception as exc:
             logger.error("OCR failed: %s", exc)
-            return {"error": f"OCR failed: {exc}",
-                    "extracted_text": "", "score": 0, "feedback": ""}
+            return {"error": f"OCR failed: {exc}", "extracted_text": "", "score": 0, "feedback": ""}
 
         if not student_text:
             return {
@@ -236,7 +196,7 @@ def grade_answer(
                 "feedback": "",
             }
 
-    # Step 3 — Groq grading
+    # Send to Groq for AI grading
     try:
         prompt = build_prompt(question, correct_answer, student_text)
         groq_result = call_groq(prompt)
@@ -251,13 +211,12 @@ def grade_answer(
             "feedback": "",
         }
 
-    # Step 4 — MLflow (non-fatal)
+    # MLflow logging is non-fatal — a tracking failure never blocks the grading result
     try:
         log_to_mlflow(question_length=len(question), score=score)
     except Exception as exc:
         logger.warning("MLflow logging failed (non-fatal): %s", exc)
 
-    # Step 5 — Return
     return {
         "extracted_text": student_text,
         "score": score,

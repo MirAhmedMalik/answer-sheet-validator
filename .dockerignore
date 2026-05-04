@@ -1,0 +1,42 @@
+# .dockerignore — files and directories excluded from the Docker build context.
+# Keeping the context small speeds up builds and avoids leaking secrets or
+# unnecessary data into the image.
+
+# Git history — not needed inside the container
+.git/
+.gitignore
+
+# Virtual environments — the image builds its own from requirements.txt
+venv/
+.venv/
+env/
+
+# Local secrets — NEVER bake credentials into an image
+.env
+
+# Test and dev tooling
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MLflow run data — generated at runtime, not part of the image
+mlruns/
+mlartifacts/
+
+# User-uploaded images — ephemeral, deleted after grading
+uploads/
+
+# IDE and OS noise
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Docs
+README.md
+help.txt
