@@ -37,18 +37,24 @@ jobs:
 
       # ── Python dependencies ─────────────────────────────────────────────── #
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt flake8
+
+      # ── Lint ────────────────────────────────────────────────────────────── #
+      - name: Lint with flake8
+        run: |
+          flake8 app/ model/ tests/ \
+            --max-line-length=120 \
+            --extend-ignore=E501
 
       # ── Tests with coverage ─────────────────────────────────────────────── #
       - name: Run pytest with coverage
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           pytest tests/ \
             --cov=model \
-            --cov=app \
             --cov-report=term-missing \
-            --cov-fail-under=30 \
+            --cov-fail-under=70 \
             -v
 
       # ── Upload coverage report as artifact ──────────────────────────────── #

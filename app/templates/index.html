@@ -142,6 +142,31 @@
       font-weight: 500;
     }
 
+    /* ── Input Tabs ──────────────────────────────────────────────────────── */
+    .input-tabs {
+      display: flex;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      padding: 0.25rem;
+    }
+    .input-tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.6rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .input-tab.active {
+      background: rgba(139, 92, 246, 0.2);
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
     /* ── Premium Drop Zone ───────────────────────────────────────────────── */
     .drop-zone {
       border: 2px dashed rgba(255, 255, 255, 0.15);
@@ -177,10 +202,13 @@
     #preview-wrap { margin-top: 1rem; display: none; text-align: center; }
     #preview-wrap img {
       max-height: 250px;
+      max-width: 100%;
+      object-fit: contain;
       border-radius: 8px;
       border: 1px solid rgba(255,255,255,0.1);
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
+    #remove-btn:hover { background: rgba(239, 68, 68, 0.3) !important; color: #fff !important; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
 
     /* ── Submit Button ───────────────────────────────────────────────────── */
     .btn-submit {
@@ -302,17 +330,31 @@
 
       <div class="field">
         <label>Student Submission Target</label>
-        <div class="drop-zone" id="drop-zone">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"/>
-          </svg>
-          <p>Drag image here or <span id="browse-link">Upload from Device</span></p>
-          <p style="font-size:0.8rem;margin-top:0.5rem;color:#64748b;">Accepts pristine JPG/PNG files</p>
+
+        <div class="input-tabs">
+          <div class="input-tab active" id="tab-image">🖼️ Image Upload</div>
+          <div class="input-tab" id="tab-text">📝 Raw Text Input</div>
         </div>
-        <input type="file" id="file-input" name="file" accept=".jpg,.jpeg,.png" />
-        <div id="preview-wrap">
-          <img id="preview" />
-          <div id="file-name" style="color:#94a3b8;font-size:0.85rem;margin-top:0.5rem;"></div>
+
+        <div id="image-upload-wrap">
+          <div class="drop-zone" id="drop-zone">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"/>
+            </svg>
+            <p>Drag image here or <span id="browse-link">Upload from Device</span></p>
+            <p style="font-size:0.8rem;margin-top:0.5rem;color:#64748b;">Accepts pristine JPG/PNG files</p>
+          </div>
+          <input type="file" id="file-input" name="file" accept=".jpg,.jpeg,.png" />
+          <div id="preview-wrap">
+            <img id="preview" />
+            <div id="file-name" style="color:#94a3b8;font-size:0.85rem;margin-top:0.5rem;margin-bottom:0.75rem;"></div>
+            <button type="button" id="remove-btn" style="background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.4); color:#fca5a5; padding:0.5rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; transition:all 0.2s ease;">Remove Image</button>
+          </div>
+        </div>
+
+        <div id="text-input-wrap" style="display: none;">
+          <textarea id="student_text_input" name="student_text_input" rows="5" maxlength="5000" placeholder="Type or paste the student's raw text answer here..."></textarea>
+          <div class="char-count"><span id="st-count">0</span> / 5000</div>
         </div>
       </div>
 
@@ -323,8 +365,8 @@
       </div>
 
       <div class="field">
-        <label>Rubric Benchmark (Correct Answer)</label>
-        <textarea id="correct_answer" name="correct_answer" rows="4" maxlength="2000" placeholder="Provide the absolute correct factual answer to establish the grading benchmark..."></textarea>
+        <label>Grading Rubric (Points & Criteria)</label>
+        <textarea id="correct_answer" name="correct_answer" rows="4" maxlength="2000" placeholder="Provide the exact factual answer OR a multi-step rubric (e.g. '5 marks for defining X, 5 marks for logic')..."></textarea>
         <div class="char-count"><span id="a-count">0</span> / 2000</div>
       </div>
 
@@ -367,11 +409,41 @@
     const resultCard = document.getElementById("result-card");
 
     // Counters
+    document.getElementById("student_text_input").addEventListener("input", e => document.getElementById("st-count").textContent = e.target.value.length);
     document.getElementById("question").addEventListener("input", e => document.getElementById("q-count").textContent = e.target.value.length);
     document.getElementById("correct_answer").addEventListener("input", e => document.getElementById("a-count").textContent = e.target.value.length);
 
+    // Tab Logic
+    let isImageMode = true;
+    const tabImage = document.getElementById("tab-image");
+    const tabText = document.getElementById("tab-text");
+    const wrapImage = document.getElementById("image-upload-wrap");
+    const wrapText = document.getElementById("text-input-wrap");
+    const txtInput = document.getElementById("student_text_input");
+
+    tabImage.addEventListener("click", () => {
+      isImageMode = true;
+      tabImage.classList.add("active");
+      tabText.classList.remove("active");
+      wrapImage.style.display = "block";
+      wrapText.style.display = "none";
+      txtInput.value = ""; // clear text
+      document.getElementById("st-count").textContent = "0";
+    });
+
+    tabText.addEventListener("click", () => {
+      isImageMode = false;
+      tabText.classList.add("active");
+      tabImage.classList.remove("active");
+      wrapText.style.display = "block";
+      wrapImage.style.display = "none";
+      document.getElementById("remove-btn").click(); // cleanup image selection
+    });
+
+    const removeBtn = document.getElementById("remove-btn");
+
     // Dropzone Logic
-    document.getElementById("browse-link").addEventListener("click", () => fileInput.click());
+    // Fix: Removed duplicate click listener on 'browse-link' to prevent double-click bubbling bug
     dropZone.addEventListener("click", () => fileInput.click());
     dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
@@ -382,12 +454,20 @@
     });
     fileInput.addEventListener("change", () => { if (fileInput.files.length) showPreview(fileInput.files[0]); });
 
+    removeBtn.addEventListener("click", () => {
+      fileInput.value = ""; // clear selected file
+      document.getElementById("preview-wrap").style.display = "none";
+      document.getElementById("drop-zone").style.display = "block"; // show dropzone again
+      previewImg.src = "";
+    });
+
     function showPreview(file) {
       const rd = new FileReader();
       rd.onload = ev => {
         previewImg.src = ev.target.result;
         document.getElementById("file-name").textContent = file.name;
-        document.getElementById("preview-wrap").style.display = "block";
+        document.getElementById("drop-zone").style.display = "none"; // hide dropzone
+        document.getElementById("preview-wrap").style.display = "block"; // show preview + remove btn
       };
       rd.readAsDataURL(file);
     }
@@ -399,14 +479,25 @@
       resultCard.style.display = "none";
       resultCard.style.animation = "none";
 
-      if (!fileInput.files.length || !document.getElementById("question").value || !document.getElementById("correct_answer").value) {
-        errBin.textContent = "All fields and image are strictly required to proceed.";
+      if (!document.getElementById("question").value || !document.getElementById("correct_answer").value) {
+        errBin.textContent = "Question and Rubric fields are strictly required to proceed.";
+        errBin.style.display = "block";
+        return;
+      }
+      
+      if (isImageMode && !fileInput.files.length) {
+        errBin.textContent = "Please upload an image, or switch to 'Raw Text Input'.";
+        errBin.style.display = "block";
+        return;
+      }
+      if (!isImageMode && !txtInput.value.trim()) {
+        errBin.textContent = "Please type out the student's answer, or switch to 'Image Upload'.";
         errBin.style.display = "block";
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "Processing Optical Data & Grading...";
+      submitBtn.textContent = "Initializing Evaluation Sequence...";
 
       try {
         const res = await fetch("/grade", { method: "POST", body: new FormData(form) });

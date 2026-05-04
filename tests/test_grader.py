@@ -1,6 +1,6 @@
 # =============================================================================
-# tests/test_grader.py — Unit tests for model/grader.py (Phase 2)
-# All external calls (Gemini API, OCR, MLflow) are fully mocked.
+# tests/test_grader.py — Unit tests for model/grader.py
+# All external calls (Groq API, OCR, MLflow) are fully mocked.
 # Tests never touch the internet or require a real API key.
 # Run with: pytest tests/ -v
 # =============================================================================
@@ -20,7 +20,7 @@ INVALID_EXTENSIONS = [".pdf", ".docx", ".txt", ".gif"]
 MOCK_OCR_TEXT = "The capital of France is Paris."
 MOCK_SCORE = 8
 MOCK_FEEDBACK = "Good answer! You correctly identified Paris as the capital of France."
-MOCK_GEMINI_JSON = json.dumps({"score": MOCK_SCORE, "feedback": MOCK_FEEDBACK})
+MOCK_GROQ_JSON = json.dumps({"score": MOCK_SCORE, "feedback": MOCK_FEEDBACK})
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +125,7 @@ class TestBuildPrompt:
         assert "The answer is 4." in prompt
 
     def test_prompt_requests_json_output(self):
-        """Prompt must instruct Gemini to return JSON only."""
+        """Prompt must instruct the Groq model to return JSON only."""
         from model.grader import build_prompt
 
         prompt = build_prompt("Q", "A", "S")
@@ -142,7 +142,7 @@ class TestGradeAnswer:
     """Integration-level tests for the public grade_answer function."""
 
     @patch("model.grader.log_to_mlflow")
-    @patch("model.grader._groq_client", new_callable=lambda: _make_groq_mock(MOCK_GEMINI_JSON))
+    @patch("model.grader._groq_client", new_callable=lambda: _make_groq_mock(MOCK_GROQ_JSON))
     @patch("model.grader.pytesseract.image_to_string", return_value=MOCK_OCR_TEXT)
     @patch("model.grader.Image.open", return_value=_mock_pil_image())
     def test_grade_answer_returns_required_keys(
@@ -165,7 +165,7 @@ class TestGradeAnswer:
         assert "feedback" in result, "Missing key: feedback"
 
     @patch("model.grader.log_to_mlflow")
-    @patch("model.grader._groq_client", new_callable=lambda: _make_groq_mock(MOCK_GEMINI_JSON))
+    @patch("model.grader._groq_client", new_callable=lambda: _make_groq_mock(MOCK_GROQ_JSON))
     @patch("model.grader.pytesseract.image_to_string", return_value=MOCK_OCR_TEXT)
     @patch("model.grader.Image.open", return_value=_mock_pil_image())
     def test_score_is_within_range(
@@ -189,7 +189,7 @@ class TestGradeAnswer:
 
     @patch("model.grader._groq_client", None)
     def test_grade_answer_no_api_key_returns_error(self, tmp_path):
-        """When GEMINI_API_KEY is missing, grade_answer must return an error dict."""
+        """When GROQ_API_KEY is missing, grade_answer must return an error dict."""
         from model.grader import grade_answer
 
         img = tmp_path / "sheet.png"
@@ -222,7 +222,7 @@ class TestGradeAnswer:
             grade_answer(image_path="/does/not/exist.jpg", question="Q")
 
     @patch("model.grader.log_to_mlflow")
-    @patch("model.grader._groq_client", new_callable=lambda: _make_groq_mock(MOCK_GEMINI_JSON))
+    @patch("model.grader._groq_client", new_callable=lambda: _make_groq_mock(MOCK_GROQ_JSON))
     @patch("model.grader.Image.open", return_value=_mock_pil_image())
     @patch("model.grader.pytesseract.image_to_string", return_value="")
     def test_empty_ocr_returns_error_dict(self, mock_ocr, mock_open, mock_client, mock_log, tmp_path):

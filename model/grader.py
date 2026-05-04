@@ -24,11 +24,12 @@ ALLOWED_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png"}
 MODEL_NAME: str               = "llama-3.1-8b-instant"
 MLFLOW_EXPERIMENT: str        = "answer-sheet-validation"
 
-# ── Ensure Tesseract is in PATH (Universal Windows Fix) ───────────────────────
-_TESSERACT_DIR = r"C:\Program Files\Tesseract-OCR"
-if _TESSERACT_DIR not in os.environ.get("PATH", ""):
-    os.environ["PATH"] = _TESSERACT_DIR + os.pathsep + os.environ.get("PATH", "")
-# Reset the internal var just in case
+# ── Ensure Tesseract is in PATH (Windows only — Linux/Docker uses system PATH) ─
+import sys as _sys
+if _sys.platform == "win32":
+    _TESSERACT_DIR = r"C:\Program Files\Tesseract-OCR"
+    if _TESSERACT_DIR not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = _TESSERACT_DIR + os.pathsep + os.environ.get("PATH", "")
 pytesseract.pytesseract.tesseract_cmd = "tesseract"
 
 # ── Logger ────────────────────────────────────────────────────────────────────
@@ -104,13 +105,17 @@ def build_prompt(question: str, correct_answer: str, student_text: str) -> str:
     """
     return (
         "You are an expert, highly accurate academic grader.\n\n"
-        f"Examine this QUESTION:\n{question}\n\n"
-        f"The EXPECTED CORRECT ANSWER is:\n{correct_answer}\n\n"
-        f"The STUDENT'S WRITTEN ANSWER (extracted via OCR, may contain typos) is:\n{student_text}\n\n"
+        "First, analyze the QUESTION and RUBRIC below to automatically deduce the subject (e.g., Math, Physics, English, History). "
+        "Adapt your grading strictness to that subject (e.g., Math requires correct final numbers or steps, History/English focus on concepts and semantic meaning).\n\n"
+        f"QUESTION:\n{question}\n\n"
+        f"TEACHER'S GRADING RUBRIC / CORRECT ANSWER:\n{correct_answer}\n\n"
+        f"STUDENT'S WRITTEN ANSWER (extracted via OCR, may contain typos):\n{student_text}\n\n"
         "INSTRUCTIONS FOR EVALUATION:\n"
-        "1. Understand the student's core meaning. Ignore minor spelling mistakes or OCR artifacts (like random punctuation or misread letters).\n"
-        "2. Compare their technical/conceptual accuracy directly to the EXPECTED CORRECT ANSWER.\n"
-        "3. Assign a score from 0 to 10 (10 = perfectly accurate meaning, 5 = partially correct, 0 = entirely wrong).\n"
+        "1. Understand the student's core conceptual meaning. Ignore minor spelling mistakes or OCR artifacts (like random punctuation or misread letters).\n"
+        "2. SEMANTIC MATCHING: DO NOT penalize the student if they use different words or synonyms than the teacher. If the underlying logic, physics, math end-result, or conceptual meaning is the same as the rubric, award full points!\n"
+        "3. GRADING & SCORING (Maximum 10 Points):\n"
+        "   - IF THE RUBRIC GIVES SPECIFIC POINTS: You MUST strictly add up the points exactly according to the teacher's point distribution (e.g., if they say '4 pts for X, 6 pts for Y', score strictly out of those rules).\n"
+        "   - IF NO POINT BREAKDOWN IS GIVEN: Use your own expert judgment to assign a fair score out of 10 based on how closely the student's meaning matches the teacher's expected answer (10 = perfectly accurate, 5 = partially correct, 0 = entirely wrong).\n"
         "4. Write 2-3 sentences of clear feedback explaining exactly what they got right, and where they went wrong.\n\n"
         "OUTPUT REQUIREMENTS:\n"
         "Respond with ONLY valid JSON. Absolutely no markdown fences (like ```json), no intro text, no trailing text.\n"
@@ -198,45 +203,35 @@ def log_to_mlflow(question_length: int, score: int) -> None:
 # =============================================================================
 
 def grade_answer(
-    image_path: str,
-    question: str,
+    image_path: str = "",
+    question: str = "",
     correct_answer: str = "",
+    student_text_input: str = "",
 ) -> dict:
     """
     Full grading pipeline: validate → OCR → Groq grade → MLflow log → result.
-
-    Args:
-        image_path:     Path to the student's answer-sheet image (.jpg/.jpeg/.png).
-        question:       The exam question being graded.
-        correct_answer: The expected/model answer (optional but improves accuracy).
-
-    Returns:
-        On success — dict with keys:
-            ``extracted_text`` (str), ``score`` (int 0-10), ``feedback`` (str)
-        On handled error — dict with keys:
-            ``error`` (str), ``extracted_text`` (str), ``score`` (int), ``feedback`` (str)
-
-    Raises:
-        FileNotFoundError: Image path does not exist.
-        ValueError:        File extension not allowed.
+    If student_text_input is provided, bypasses image validation and OCR completely.
     """
-    # Step 1 — Validate (raises on bad path / extension)
-    validate_image_path(image_path)
+    if student_text_input:
+        student_text = student_text_input
+    else:
+        # Step 1 — Validate (raises on bad path / extension)
+        validate_image_path(image_path)
 
-    # Step 2 — OCR
-    try:
-        student_text = extract_text(image_path)
-    except Exception as exc:
-        logger.error("OCR failed: %s", exc)
-        return {"error": f"OCR failed: {exc}", "extracted_text": "", "score": 0, "feedback": ""}
+        # Step 2 — OCR
+        try:
+            student_text = extract_text(image_path)
+        except Exception as exc:
+            logger.error("OCR failed: %s", exc)
+            return {"error": f"OCR failed: {exc}", "extracted_text": "", "score": 0, "feedback": ""}
 
-    if not student_text:
-        return {
-            "error": "OCR returned no text. Check image quality or try a clearer photo.",
-            "extracted_text": "",
-            "score": 0,
-            "feedback": "",
-        }
+        if not student_text:
+            return {
+                "error": "OCR returned no text. Check image quality or try a clearer photo.",
+                "extracted_text": "",
+                "score": 0,
+                "feedback": "",
+            }
 
     # Step 3 — Groq grading
     try:

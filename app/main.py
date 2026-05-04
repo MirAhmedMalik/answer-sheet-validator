@@ -173,13 +173,6 @@ def grade():
     file_path: str = ""
 
     try:
-        # ── Validate file ──────────────────────────────────────────────── #
-        uploaded_file = request.files.get("file")
-        is_valid, file_error = validate_upload(uploaded_file)
-        if not is_valid:
-            logger.warning("Upload validation failed: %s", file_error)
-            return jsonify({"error": file_error}), 400
-
         # ── Validate text fields ───────────────────────────────────────── #
         question, q_err = _validate_text_field(
             request.form.get("question"), "question", MAX_QUESTION_LEN
@@ -193,18 +186,33 @@ def grade():
         if a_err:
             return jsonify({"error": a_err}), 400
 
-        # ── Save file safely ───────────────────────────────────────────── #
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        safe_name = f"{uuid.uuid4().hex}_{secure_filename(uploaded_file.filename)}"
-        file_path = os.path.join(UPLOAD_FOLDER, safe_name)
-        uploaded_file.save(file_path)
-        logger.info("File saved temporarily: %s", safe_name)
+        student_text_input = request.form.get("student_text_input", "").strip()
+        uploaded_file = request.files.get("file")
+
+        # ── Validate file OR raw text ──────────────────────────────────── #
+        if student_text_input:
+            if len(student_text_input) > 5000:
+                return jsonify({"error": "Raw text input must be 5000 characters or fewer."}), 400
+            file_path = ""
+        else:
+            is_valid, file_error = validate_upload(uploaded_file)
+            if not is_valid:
+                logger.warning("Upload validation failed: %s", file_error)
+                return jsonify({"error": file_error}), 400
+
+            # ── Save file safely ───────────────────────────────────────────── #
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            safe_name = f"{uuid.uuid4().hex}_{secure_filename(uploaded_file.filename)}"
+            file_path = os.path.join(UPLOAD_FOLDER, safe_name)
+            uploaded_file.save(file_path)
+            logger.info("File saved temporarily: %s", safe_name)
 
         # ── Grade ──────────────────────────────────────────────────────── #
         result = grade_answer(
             image_path=file_path,
             question=question,
             correct_answer=correct_answer,
+            student_text_input=student_text_input,
         )
 
         if "error" in result:

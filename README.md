@@ -1,6 +1,6 @@
 # 🎓 AI-Powered Answer Sheet Validator
 
-> Upload a photo of a student's answer sheet → OCR extracts the text → Gemini AI grades it and returns structured feedback.
+> Upload a photo of a student's answer sheet → OCR extracts the text → Groq API AI grades it and returns structured feedback.
 
 ---
 
@@ -9,7 +9,7 @@
 | Step | Technology | Description |
 |------|-----------|-------------|
 | 1 | **Tesseract OCR** | Reads handwritten/printed text from the uploaded image |
-| 2 | **Google Gemini** | Compares student answers against the answer key and scores them |
+| 2 | **Groq API** | Compares student answers against the answer key and scores them |
 | 3 | **Flask** | Serves the web UI and REST `/grade` endpoint |
 | 4 | **MLflow** | Logs every grading experiment (score, subject, filename) |
 | 5 | **DVC** | Versions training data and model artifacts |
@@ -20,7 +20,7 @@
 
 - **Backend:** Python 3.11, Flask 3.0, Werkzeug 3.0
 - **OCR:** pytesseract 0.3.13, Pillow 10.4
-- **AI:** Google Generative AI SDK 0.7.2 (Gemini 1.5 Flash)
+- **AI:** Groq SDK (groq 0.x)
 - **MLOps:** MLflow 2.15, DVC 3.51
 - **Testing:** pytest 8.3, pytest-cov 5.0
 - **CI/CD:** GitHub Actions
@@ -33,7 +33,7 @@
 ### Prerequisites
 - Python 3.11+
 - [Tesseract OCR](https://github.com/tesseract-ocr/tesseract#installing-tesseract) installed and on your `PATH`
-- A [Google AI Studio](https://aistudio.google.com/) API key
+- A [Groq Cloud](https://console.groq.com/) API key
 
 ### Steps
 
@@ -54,7 +54,7 @@ pip install -r requirements.txt
 
 # 4. Configure environment variables
 cp .env.example .env
-# Edit .env and set GEMINI_API_KEY=<your_real_key>
+# Edit .env and set GROQ_API_KEY=<your_real_key>
 
 # 5. Run the Flask development server
 flask run
@@ -70,7 +70,7 @@ flask run
 
 ```bash
 # Run all tests with coverage report
-pytest --cov=model --cov=app --cov-report=term-missing -v
+pytest tests/ --cov=model --cov-report=term-missing --cov-fail-under=70 -v
 ```
 
 Coverage must stay above **70%** (enforced in CI).
@@ -85,7 +85,7 @@ docker build -t answer-sheet-validator .
 
 # Run the container (pass your API key at runtime — never bake it into the image)
 docker run -p 5000:5000 \
-  -e GEMINI_API_KEY=your_real_key \
+  -e GROQ_API_KEY=your_real_key \
   answer-sheet-validator
 
 # Open http://localhost:5000
@@ -121,7 +121,7 @@ answer-sheet-validator/
 │       └── index.html      # Teacher upload UI
 ├── model/
 │   ├── __init__.py
-│   └── grader.py           # OCR + Gemini grading pipeline
+│   └── grader.py           # OCR + Groq grading pipeline
 ├── tests/
 │   └── test_grader.py      # Unit tests (fully mocked)
 ├── data/answer_keys/       # Sample JSON answer keys
